@@ -1,0 +1,38 @@
+{
+  "name": "Init Manager",
+  "description": "Initiative enhancements for Roll20",
+  "version": "1.0",
+  "manifest_version": 3,
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": ["storage", "activeTab", "scripting"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "/images/init-manager-icon-16.png",
+      "32": "/images/init-manager-icon-32.png",
+      "48": "/images/init-manager-icon-48.png",
+      "128": "/images/init-manager-icon-128.png"
+    }
+  },
+  "icons": {
+    "16": "/images/init-manager-icon-16.png",
+    "32": "/images/init-manager-icon-32.png",
+    "48": "/images/init-manager-icon-48.png",
+    "128": "/images/init-manager-icon-128.png"
+  },
+  "web_accessible_resources": [{
+      "resources": ["/images/*"],
+      "matches": ["https://app.roll20.net/*"]
+    }],
+  "options_page": "options.html",
+  "content_scripts": [
+    {
+      "matches": ["https://app.roll20.net/editor/"],
+      "all_frames": true,
+      "css": ["/roll20/styles.css"],
+      "js": ["/roll20/content-script.js"]
+    }
+  ]
+}

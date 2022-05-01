@@ -1,0 +1,68 @@
+/*this is a test to verify this is working. please remove later!*/
+:root{
+    --initManager-purple: #7e00cd;
+    --initManager-blue: #0064cd;
+    --initManager-border: #000;
+    --initManager-textcolor: #fff;
+}
+
+.initManager_hidden{
+    display: none;
+}
+
+#initManager_currentPlayerBar{
+    background-color: var(--initManager-border);
+    background-position: center;
+    background-image: url('images/init-manager-icon-128.png');
+    background-repeat: no-repeat;
+    background-size: cover;
+    border: 10px solid var(--initManager-border);
+    border-radius: 0 0 20px 20px;
+    border-width: 0 10px 10px;
+    height: 60px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1000;
+    width: 80%;
+    margin: 0 auto 0 10%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.initManager_currentPlayerIcon{
+    background: var(--initManager-border);
+    border: 5px solid var(--initManager-border);
+    border-radius: 75px;
+    color: var(--initManager-textcolor);
+    width: 75px;
+    height: 75px;
+    padding: 0;
+    margin: 0;
+}
+.initManager_currentPlayerIcon img{
+    border-radius: 75px;
+}
+
+.initManager_currentPlayerInfo{
+    color: var(--initManager-textcolor);
+    font-size: 25px;
+    font-weight: 600;
+    padding: 10px;
+    text-transform: uppercase;
+}
+
+.initManager_currentPlayerInfo:after {
+    content: ' ';
+    display: block;
+    width: 100%;
+    height: 60px;
+    background: var(--initManager-border);
+    border-radius: 0 0 10px 10px;
+    position: absolute;
+    opacity: 0.7;
+    left: 0;
+    top: 0;
+    z-index: -1;
+}
