@@ -56,7 +56,7 @@ Find a bug? [Help me crush it](https://github.com/terapixelle/init-manager/issue
 [@terapixelle](https://github.com/terapixelle) (Author)
 
 #### Presage of Shadows Campaign (Testers)
-- A homebrewing DM with a vivid imagination
+- A homebrewing DM with an absurd imagination
 - One posh, well-connected Rogue
 - A Druid queen in pursuit of vengeance
 - One Barbarian with oni blood and penchant for nat 20s

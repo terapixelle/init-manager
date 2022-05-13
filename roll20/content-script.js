@@ -1,7 +1,6 @@
 /**
  * TODOS:
  * - set/unset watchers and listeners when the turn order box shows or hides (do we do this even if the elements still exist?)
- * - show/hide the initiative banner when the turn order box shows or hides
  * - add some fancier chat design to the "you're up" message
  * - use the chat message to trigger the banner updates (so players w/ the extension can see it update)
  */
@@ -19,6 +18,7 @@
     const defaultIcon32     = chrome.runtime.getURL("images/init-manager-icon-32.png");
     const startRoundsBtn    = document.querySelector('#startrounds');
 
+    let currentPlayer       = '';
     let doneFirstItemCheck  = false;
     let watchingTurnOrder   = false;
     let watchingOpenTurnBox = false;
@@ -173,8 +173,13 @@
         let message = (nameValue) ? nameValue + ', YOU\'RE UP!' : 'NEXT PLAYER/CREATURE';
         let chatMessage = '&{template:default} {{name=Initiative Update!}} {{Turn= '+ nameValue +'}}';
         console.log('Init Manager > nextPlayer:', nextPlayerNode, nameValue)
-        //updateBanner(nameValue);
-        postChatMessage(chatMessage);
+        console.log('Init Manager > compare currentPlayer to nextPlayer:', nextPlayerNode, nameValue)
+        if (currentPlayer !== nameValue){
+            console.log('Init Manager > comparing player names:', currentPlayer, nameValue)
+            currentPlayer = nameValue;
+            //updateBanner(nameValue);
+            postChatMessage(chatMessage);
+        }
     }
     
     function postChatMessage(message, character = null){
