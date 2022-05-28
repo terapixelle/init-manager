@@ -1,13 +1,13 @@
 /**
  * TODOS:
- * - set/unset watchers and listeners when the turn order box shows or hides (do we do this even if the elements still exist?)
  * - add some fancier chat design to the "you're up" message
  * - use the chat message to trigger the banner updates (so players w/ the extension can see it update)
+ * - try to get images to load in chat messages (try pulling from github instead of chrome extension?)
+ * - allow customization of certain chat messages
  */
 (function () {
     console.log('%c Init Manager: Roll20 module loaded.', 'color: yellow');
 
-    
     const chatContainer     = document.querySelector('#textchat-input');
     const chatText          = chatContainer.querySelector('textarea');
     const chatSpeaker       = chatContainer.querySelector('#speakingas');
@@ -16,7 +16,6 @@
     const observerOpenBox   = new MutationObserver(watchOpenTurnBox);
     const defaultIcon       = chrome.runtime.getURL("images/init-manager-icon-128.png");
     const defaultIcon32     = chrome.runtime.getURL("images/init-manager-icon-32.png");
-    const startRoundsBtn    = document.querySelector('#startrounds');
 
     let currentPlayer       = '';
     let doneFirstItemCheck  = false;
@@ -24,7 +23,11 @@
     let watchingOpenTurnBox = false;
     let nextPlayerNode      = '';
     let nextPlayerNodeImage = '';
+    let isDM                = false;
     let isInitBoxOpen       = false;
+    let totalRoundsTaken    = 1;
+    let totalTurnsPerRound  = 0;
+    let totalTurnsThisRound = 0;
 
     const DmElements = {
         location: [
@@ -50,10 +53,8 @@
                 }
                 
                 // this button always opens it, so we'll always say...
-                // postChatMessage('------ ROLL FOR INITIATIVE!! -----');
-                // postChatMessage('&{template:default} {{name=[x]('+defaultIcon32+') ROLL FOR INITIATIVE!}}');
-                postChatMessage('&{template:default} {{name=⚔⚔ ROLL FOR INITIATIVE! ⚔⚔}}');
-
+                isDM && postChatMessage('&{template:default} {{name=⚔⚔ ROLL FOR INITIATIVE! ⚔⚔}}');
+                
                 // it doesn't seem to like this... &{template:default}{{name=[x](chrome-extension://bfcdbnpggdklhjmcagallaaiboodlkpm/images/init-manager-icon-128.png)}}
                 // but this works... &{template:default}{{name=[x](https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png)}}
                 // template: &{template:default}{{name=[x](YOUR_IMAGE_URL#.png)}}{{test=foo}}
@@ -131,53 +132,48 @@
                 // updateBanner();
             });
 
+            // add event listener to closing the Turn Order modal
             closeInitBox.addEventListener("click", function() {
-                // - terminate observer (do we do this even if the turn order is just hiding?)
-                // - set watchingTurnOrder to false (do we do this even if the turn order is just hiding?)
                 console.log('Init Manager >> INIT BOX CLICKED! IS IT OPEN?', isInitBoxOpen)
                 togglePlayerBar(isInitBoxOpen);
                 // postChatMessage('------ END INITIATIVE -----');
-                postChatMessage('&{template:default} {{name=🛡🛡 END INITIATIVE! 🛡🛡}}');
+                isDM && postChatMessage('&{template:default} {{name=🛡🛡 END INITIATIVE! 🛡🛡}}');
             });
 
             togglePlayerBar(isInitBoxOpen);
-
-            // if(document.querySelector('#startrounds')){
-            //     console.log('%c Hello DM!', 'color: green')
-            //     let DmInitButton = document.querySelector('#startrounds');
-            //     DmInitButton.addEventListener("click", function(){
-            //         console.log('%c Init Manager >> DM CLICKED STARTROUNDS! Rolling for Initiative?', isInitBoxOpen)
-            //         togglePlayerBar(isInitBoxOpen);
-            //     });
-            // }
-            // if(DmInitButton){
-            //     console.log('%c Hello DM!', 'color: green')
-            //     DmInitButton.addEventListener("click", function(){
-            //         console.log('%c Init Manager >> DM CLICKED STARTROUNDS! Rolling for Initiative?', isInitBoxOpen)
-            //         togglePlayerBar(isInitBoxOpen);
-            //     });
-            // }
-
-
-            // TODO: when InitBox reopens...
-            // - rebind the addEventListener to nextButton
-            // - set observer
-            // - set watchingTurnOrder to true
-            // - show #initManager_currentPlayerBar
         }
     };
 
-    function messageToPlayers(){
+
+    function isNextPlayersTurn(current = currentPlayer, next = nextPlayerNode){
+        // compare current (N)PC's name with the next (N)PC
+        let nextNameValue = (next.innerText) ? sanitizeContent(next.innerText) : null;
+        console.log('Init Manager > isNextPlayersTurn', next, nextPlayerNode, nextNameValue)
+        console.log('Init Manager > compare currentPlayer to nextPlayer:', current, currentPlayer, next, nextPlayerNode, nextNameValue)
+        if (current !== nextNameValue){
+            console.log('%c Init Manager > new player to start playing!', 'color: green;')
+            currentPlayer = nextNameValue;
+            return true;
+        }else{
+            console.log('%c Init Manager > current player is still playing!', 'color: yellow;')
+            return false;
+        }
+    }
+
+    function messageToPlayers(nextTurn){
+        // TODO: add "Turn X of Y", "Current Round of Combat: Z" to message
         console.log('Init Manager > messageToPlayers')
         let nameValue = (nextPlayerNode.innerText) ? sanitizeContent(nextPlayerNode.innerText) : null;
         let message = (nameValue) ? nameValue + ', YOU\'RE UP!' : 'NEXT PLAYER/CREATURE';
-        let chatMessage = '&{template:default} {{name=Initiative Update!}} {{Turn= '+ nameValue +'}}';
-        console.log('Init Manager > nextPlayer:', nextPlayerNode, nameValue)
-        console.log('Init Manager > compare currentPlayer to nextPlayer:', nextPlayerNode, nameValue)
-        if (currentPlayer !== nameValue){
-            console.log('Init Manager > comparing player names:', currentPlayer, nameValue)
-            currentPlayer = nameValue;
-            //updateBanner(nameValue);
+        let turnMessage = ' {{Turn= '+ totalTurnsThisRound +' of '+ totalTurnsPerRound +' Participants}} {{Round= '+ totalRoundsTaken +'}}';
+        let chatMessage = '&{template:default} {{name=Initiative Update!}} {{Player= '+ nameValue +'}}' + turnMessage;
+        // if (currentPlayer !== nameValue){
+        //     console.log('Init Manager > comparing player names:', currentPlayer, nameValue)
+        //     currentPlayer = nameValue;
+        //     //updateBanner(nameValue);
+        //     postChatMessage(chatMessage);
+        // }
+        if (nextTurn){
             postChatMessage(chatMessage);
         }
     }
@@ -189,7 +185,7 @@
 
         // sanitize. because it's always good to do AND we might allow custom content later
         message = sanitizeContent(message);
-        console.log('Init Manager > postChatMessage', message)
+        //console.log('Init Manager > postChatMessage', message)
         chatSpeaker.children[0].selected = true;
         // add message to text box
         chatText.value = message;
@@ -203,6 +199,37 @@
             //content = content.innerText
         }
         return content.replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    }
+
+    function setRoundDetails(turnList, nextTurn){
+        // What this does:
+        // set/update the number of turns per round (totalTurnsPerRound)
+        // set/update the number of rounds taken (totalTurnsThisRound)
+        // if we reach max turns per round:
+        //   - increase totalRoundsTaken
+        //   - reset totalTurnsThisRound to 0
+        //   - announce end of round via chat message
+
+        // what if turns get changed due to addition/subtraction? Reset totalTurnsPerRound?
+        let turnsDetected = turnList.children ? turnList.children.length : 0
+        if(turnsDetected !== totalTurnsPerRound){
+            totalTurnsPerRound = turnsDetected;    
+        }
+
+        // Criteria for updating totalTurnsThisRound:
+        // 1. if the player IS different than before (filters out changes caused by other things)
+        // 2. if the totalTurnsThisRound is less than totalTurnsPerRound
+
+        if(nextTurn && totalTurnsThisRound < totalTurnsPerRound){
+            // increase turn count for this round
+            totalTurnsThisRound++;
+        }else if (nextTurn && totalTurnsThisRound >= totalTurnsPerRound){
+            // totalRoundsTaken only updates when totalTurnsThisRound exceeds totalTurnsPerRound
+            totalRoundsTaken++;
+            totalTurnsThisRound = 1;
+            // announce end of round via chat message!
+            isDM && postChatMessage('&{template:default} {{name=🛡 Start of Round '+ totalRoundsTaken +'! 🛡}}');
+        }
     }
 
     function togglePlayerBar(combat){
@@ -292,16 +319,20 @@
 
                 if (isInitBoxOpen){
                     console.log('%c watchTurnOrder >> TURN ORDER IS OPEN, UPDATE BANNER', 'color: aqua')
+                    console.log('watchTurnOrder >> Player Check:', currentPlayer, nextPlayerNode.innerText, 'same?', currentPlayer === nextPlayerNode.innerText)
+                    
+                    let nextTurn = isNextPlayersTurn(currentPlayer, nextPlayerNode);
+                    setRoundDetails(document.querySelector('#initiativewindow .characterlist'), nextTurn);
                     updateBanner();
-                    messageToPlayers();
+                    messageToPlayers(nextTurn);
                 }
                 
             }
         }
     }
 
-    // check on interval for value
     function checkForItem(t) {
+        // check on interval for value
         console.log('checkForItem value:', t)
         function a(t) {
             let a, o = {
@@ -353,17 +384,73 @@
         }, t.interval) : t.failCallback(t)
     }
 
+    function waitForIt(selector) {
+        // async check for something. Ideal for players, who won't see or control Turn Order modal
+        return new Promise(resolve => {
+            if (document.querySelector(selector)) {
+                console.log('WE IMMEDIATELY OBSERVED >> ', document.querySelector(selector))
+                return resolve(document.querySelector(selector));
+            }
+
+            const observeTurnsAsPlayer = new MutationObserver(mutations => {
+                console.log('%c OBSERVING WITH WAITFORIT!!', 'color: red;')
+                for(const mutation of mutations) {
+                    if (mutation.type === 'childList' && document.querySelector(selector)) {
+                        console.log('WE OBSERVED >> ', document.querySelector(selector))
+                        resolve(document.querySelector(selector));
+                        //observer.disconnect();
+                    }
+                }
+            });
+            const config = {attributes: false, childList: true, subtree: false};
+
+            observeTurnsAsPlayer.observe(document.body, config);
+        });
+    }
+
+    function setupPlayerBanner(turnBox) {
+        //TODO: duplicate DM actions to setup watches and build banner (see DmElements callback for the script!!)
+        console.log('%c Init Manager > setupPlayerBanner', 'color: aliceblue')
+    }
+
     if(document.querySelector('#startrounds')){
-        // if the DM, check for DM init button option
+        // if the DM, check for DM init button option and set isDM to true
         console.log('%c HELLO DM/GM!!', 'color: green')
+        isDM = true;
         checkForItem(DmElements);
     }else{
-        // likely a player. wait for a signal (from chat? something else?) before looking for turn order box
+        // likely a player. wait for the Turn Order box before doing more
         console.log('%c HELLO PLAYER!!', 'color: aliceblue')
+        waitForIt('.initiativedialog').then((element) => {
+            console.log('ELEMENT', element);
+            setupPlayerBanner(element);
+        });
     }
 
     // TODO: check for this if NOT a DM
     // checkForItem(turnOrderElements);
-    
+    /*
+
+    try this from: https://stackoverflow.com/questions/5525071/how-to-wait-until-an-element-exists
+    function waitForIt(selector) {
+        return new Promise(resolve => {
+            if (document.querySelector(selector)) {
+                return resolve(document.querySelector(selector));
+            }
+
+            const observer = new MutationObserver(mutations => {
+                if (document.querySelector(selector)) {
+                    resolve(document.querySelector(selector));
+                    observer.disconnect();
+                }
+            });
+
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+        });
+    }
+    */
     //document.addEventListener("DOMContentLoaded", console.log('Init Manager: Hello!'));
 })();
